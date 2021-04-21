@@ -1,0 +1,103 @@
+#include <LiquidCrystal.h>
+
+//inicializar a biblioteca com os números dos pinos da interface
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+int Vin14 = A1, Iin1 = A3, Edesejado = A2, cont = 0, i = 0, circuito = 8;
+int V_inst = 0, I_inst = 0, E_desejado = 0, Vmax = 247, Imax = 30;
+float Media = 0, Consumo[24] = {0};
+ 
+int PotInst(int V, int I){
+  return V * I;
+}
+
+void setup(){
+  Serial.begin(9600);
+  // Configura o número de colunas e linhas do LCD: 
+  lcd.begin(16, 2);
+  pinMode(Vin14,INPUT);
+  pinMode(Iin1,INPUT);
+  pinMode(Edesejado,INPUT);
+  pinMode(circuito,OUTPUT);
+  
+  pinMode(7, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(12, OUTPUT);
+  
+  digitalWrite(8, HIGH);
+  
+  Serial.println("\t \t  Consumo Diario");
+  Serial.print(" W \t W \t W \t W\t W\t W \t W|h \n");
+}
+
+void loop() {
+  V_inst =  analogRead(Vin14) * (float(Vmax)/1023);
+  I_inst =  analogRead(Iin1) * (float(Imax)/1023);
+  
+  lcd.setCursor(0, 0);
+  lcd.print("V:");
+  lcd.setCursor(2, 0);
+  lcd.print(V_inst);
+  
+  lcd.setCursor(6, 0);
+  lcd.print("I:");
+  lcd.setCursor(8, 0);
+  lcd.print(I_inst);
+  
+  lcd.setCursor(11, 0);
+  lcd.print("E");
+  lcd.setCursor(12, 0);
+  E_desejado = map(analogRead(Edesejado), 0, 1023, 0, 7410);
+  lcd.print(E_desejado);
+  
+  lcd.setCursor(0, 1);
+  lcd.print("P");
+  lcd.setCursor(1, 1);
+  delay(1000);
+  lcd.print(PotInst(V_inst, I_inst));
+  Serial.print(PotInst(V_inst, I_inst));
+  Serial.print("\t");
+  cont++;
+  lcd.setCursor(5, 1);
+  lcd.print("W");
+  Media += PotInst(V_inst, I_inst);
+    
+  if(cont==6){
+  	lcd.setCursor(7, 1);
+  	lcd.print("C");
+  	lcd.setCursor(8, 1);
+    Media = Media/cont;
+    
+    if(Media >= E_desejado)
+    {
+      digitalWrite(6, HIGH);
+      digitalWrite(7, LOW);
+      digitalWrite(9, LOW);
+      digitalWrite(8, LOW);
+    }
+    else if(Media >= E_desejado/2 && Media < E_desejado)
+    {
+      digitalWrite(6, LOW);
+      digitalWrite(7, HIGH);
+      digitalWrite(9, LOW);
+      digitalWrite(8, HIGH);
+    }
+    else
+    {
+      digitalWrite(6, LOW);
+      digitalWrite(7, LOW);
+      digitalWrite(9, HIGH);
+      digitalWrite(8, HIGH);
+    }
+    
+    Consumo[i] = Media;
+    lcd.print(Consumo[i], 1);
+    Serial.print(Consumo[i], 1);
+    lcd.setCursor(14, 1);
+    lcd.print("Wh");
+    i++;
+    cont=0;
+    Media = 0;
+    Serial.print("\n");
+  }
+}
